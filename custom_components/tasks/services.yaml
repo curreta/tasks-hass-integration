@@ -1,0 +1,173 @@
+create_task:
+  name: Create task
+  description: Create a new task on the kanban board.
+  fields:
+    summary:
+      name: Summary
+      description: Task title.
+      required: true
+      selector:
+        text:
+    stage:
+      name: Stage
+      description: Kanban stage to place the task in.
+      default: upcoming
+      selector:
+        select:
+          options:
+            - someday
+            - upcoming
+            - ready
+            - in_progress
+    project:
+      name: Project
+      description: Project grouping.
+      selector:
+        text:
+    description:
+      name: Description
+      description: Markdown body.
+      selector:
+        text:
+          multiline: true
+    priority:
+      name: Priority
+      description: Priority 1-9.
+      selector:
+        number:
+          min: 1
+          max: 9
+          mode: box
+    categories:
+      name: Tags
+      description: Comma-separated tags.
+      selector:
+        text:
+    due:
+      name: Due
+      description: "Due date (YYYY-MM-DD) or datetime (YYYY-MM-DD HH:MM)."
+      selector:
+        text:
+    deadline:
+      name: Deadline
+      description: "Hard deadline date (YYYY-MM-DD)."
+      selector:
+        text:
+    config_entry_id:
+      name: Integration
+      description: Target a specific Tasks integration (optional).
+      selector:
+        config_entry:
+          integration: tasks
+
+update_task:
+  name: Update task
+  description: Update fields on an existing task.
+  fields:
+    task_id:
+      name: Task ID
+      description: Numeric task ID.
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    summary:
+      name: Summary
+      selector:
+        text:
+    description:
+      name: Description
+      selector:
+        text:
+          multiline: true
+    project:
+      name: Project
+      selector:
+        text:
+    priority:
+      name: Priority
+      selector:
+        number:
+          min: 1
+          max: 9
+          mode: box
+    categories:
+      name: Tags
+      selector:
+        text:
+    due:
+      name: Due
+      selector:
+        text:
+    deadline:
+      name: Deadline
+      selector:
+        text:
+    config_entry_id:
+      name: Integration
+      selector:
+        config_entry:
+          integration: tasks
+
+complete_task:
+  name: Complete task
+  description: Mark a task complete (moves it to the done stage).
+  fields:
+    task_id:
+      name: Task ID
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    config_entry_id:
+      name: Integration
+      selector:
+        config_entry:
+          integration: tasks
+
+delete_task:
+  name: Delete task
+  description: Delete a task.
+  fields:
+    task_id:
+      name: Task ID
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    config_entry_id:
+      name: Integration
+      selector:
+        config_entry:
+          integration: tasks
+
+move_task:
+  name: Move task
+  description: Move a task to a different kanban stage.
+  fields:
+    task_id:
+      name: Task ID
+      required: true
+      selector:
+        number:
+          min: 1
+          mode: box
+    stage:
+      name: Stage
+      required: true
+      selector:
+        select:
+          options:
+            - someday
+            - upcoming
+            - ready
+            - in_progress
+            - done
+    config_entry_id:
+      name: Integration
+      selector:
+        config_entry:
+          integration: tasks

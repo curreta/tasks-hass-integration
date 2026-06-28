@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Tasks",
+        "description": "Connect to your tasks_go kanban server.",
+        "data": {
+          "url": "Server URL"
+        }
+      },
+      "options": {
+        "title": "Options",
+        "data": {
+          "create_project_lists": "Create a to-do list per project",
+          "show_due_in": "Days ahead to consider \"due soon\"",
+          "calendar_date_field": "Calendar date source",
+          "refresh_interval": "Refresh interval"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the tasks server",
+      "unknown": "Unexpected error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Tasks options",
+        "data": {
+          "create_project_lists": "Create a to-do list per project",
+          "show_due_in": "Days ahead to consider \"due soon\"",
+          "calendar_date_field": "Calendar date source",
+          "refresh_interval": "Refresh interval"
+        }
+      }
+    }
+  },
+  "selector": {
+    "calendar_date_field": {
+      "options": {
+        "due": "Due date",
+        "deadline": "Deadline"
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+    "domain": "tasks",
+    "name": "Tasks",
+    "version": "0.1.0",
+    "documentation": "https://github.com/curreta/tasks-hass-integration",
+    "issue_tracker": "https://github.com/curreta/tasks-hass-integration/issues",
+    "dependencies": [],
+    "codeowners": ["@curreta"],
+    "requirements": [],
+    "iot_class": "local_polling",
+    "icon": "mdi:view-column",
+    "config_flow": true
+}
