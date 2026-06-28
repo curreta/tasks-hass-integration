@@ -86,6 +86,11 @@ class TasksStageSensor(_TasksSensorBase):
                     "project": i.project,
                     "priority": i.priority,
                     "due": i.due_display or None,
+                    "deadline": i.deadline_display or None,
+                    "deadline_iso": i.deadline.isoformat() if i.deadline else None,
+                    "due_iso": i.due.isoformat() if i.due else None,
+                    "duration": i.duration_display or None,
+                    "categories": i.categories or None,
                 }
                 for i in self._stage_items()
             ]
@@ -119,7 +124,16 @@ class TasksDueTodaySensor(_TasksSensorBase):
     def extra_state_attributes(self):
         return {
             "items": [
-                {"id": i.id, "summary": i.summary, "due": i.due_display or None}
+                {
+                    "id": i.id,
+                    "summary": i.summary,
+                    "due": i.due_display or None,
+                    "deadline": i.deadline_display or None,
+                    "deadline_iso": i.deadline.isoformat() if i.deadline else None,
+                    "due_iso": i.due.isoformat() if i.due else None,
+                    "duration": i.duration_display or None,
+                    "categories": i.categories or None,
+                }
                 for i in self._due_items()
             ]
         }

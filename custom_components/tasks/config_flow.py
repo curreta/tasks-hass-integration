@@ -11,18 +11,14 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     DurationSelector,
     DurationSelectorConfig,
-    SelectSelector,
-    SelectSelectorConfig,
 )
 
 from .api import TasksApiClient
 from .const import (
-    CONF_CALENDAR_DATE_FIELD,
     CONF_CREATE_PROJECT_LISTS,
     CONF_REFRESH_INTERVAL,
     CONF_SHOW_DUE_IN,
     CONF_URL,
-    DEFAULT_CALENDAR_DATE_FIELD,
     DEFAULT_REFRESH_INTERVAL,
     DEFAULT_SHOW_DUE_IN,
     DOMAIN,
@@ -45,12 +41,10 @@ def _duration_to_seconds(config: dict[str, int]) -> int:
     )
 
 
-_DATE_FIELD_SELECTOR = SelectSelector(
-    SelectSelectorConfig(options=["due", "deadline"], translation_key="calendar_date_field")
-)
-
-
 def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
+    # Note: the calendar date field (due vs deadline) is no longer configurable;
+    # calendars always key on `due` (the do-date). Legacy entries keep the
+    # CONF_CALENDAR_DATE_FIELD key harmlessly — it is simply ignored.
     return vol.Schema(
         {
             vol.Optional(
@@ -61,10 +55,6 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
                 CONF_SHOW_DUE_IN,
                 default=defaults.get(CONF_SHOW_DUE_IN, DEFAULT_SHOW_DUE_IN),
             ): vol.Coerce(int),
-            vol.Optional(
-                CONF_CALENDAR_DATE_FIELD,
-                default=defaults.get(CONF_CALENDAR_DATE_FIELD, DEFAULT_CALENDAR_DATE_FIELD),
-            ): _DATE_FIELD_SELECTOR,
             vol.Optional(
                 CONF_REFRESH_INTERVAL,
                 default=_seconds_to_duration(
@@ -112,9 +102,6 @@ class TasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 **self._server_data,
                 CONF_CREATE_PROJECT_LISTS: user_input.get(CONF_CREATE_PROJECT_LISTS, False),
                 CONF_SHOW_DUE_IN: user_input.get(CONF_SHOW_DUE_IN, DEFAULT_SHOW_DUE_IN),
-                CONF_CALENDAR_DATE_FIELD: user_input.get(
-                    CONF_CALENDAR_DATE_FIELD, DEFAULT_CALENDAR_DATE_FIELD
-                ),
                 CONF_REFRESH_INTERVAL: _duration_to_seconds(
                     user_input.get(
                         CONF_REFRESH_INTERVAL, _seconds_to_duration(DEFAULT_REFRESH_INTERVAL)
@@ -143,9 +130,6 @@ class TasksOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_URL: self.entry.data.get(CONF_URL),
                 CONF_CREATE_PROJECT_LISTS: user_input.get(CONF_CREATE_PROJECT_LISTS, False),
                 CONF_SHOW_DUE_IN: user_input.get(CONF_SHOW_DUE_IN, DEFAULT_SHOW_DUE_IN),
-                CONF_CALENDAR_DATE_FIELD: user_input.get(
-                    CONF_CALENDAR_DATE_FIELD, DEFAULT_CALENDAR_DATE_FIELD
-                ),
                 CONF_REFRESH_INTERVAL: _duration_to_seconds(
                     user_input.get(
                         CONF_REFRESH_INTERVAL, _seconds_to_duration(DEFAULT_REFRESH_INTERVAL)

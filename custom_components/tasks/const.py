@@ -6,6 +6,8 @@ CONF_URL = "url"
 CONF_REFRESH_INTERVAL = "refresh_interval"
 CONF_CREATE_PROJECT_LISTS = "create_project_lists"
 CONF_SHOW_DUE_IN = "show_due_in"
+# Legacy: calendars now always key on `due`. Kept so old config entries that
+# still carry this key load without error; the value is ignored.
 CONF_CALENDAR_DATE_FIELD = "calendar_date_field"
 
 # Kanban stages (mirrors tasks_go server)
