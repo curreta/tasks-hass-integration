@@ -36,7 +36,10 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    entities: list[TasksCalendarBase] = [TasksUnifiedCalendar(coordinator, config_entry)]
+    entities: list[TasksCalendarBase] = [
+        TasksUnifiedCalendar(coordinator, config_entry),
+        TasksDeadlineCalendar(coordinator, config_entry),
+    ]
 
     if config_entry.data.get(CONF_CREATE_PROJECT_LISTS, False):
         projects = sorted({item.project for item in (coordinator.data or []) if item.project})
@@ -76,6 +79,7 @@ class TasksCalendarBase(CoordinatorEntity, CalendarEntity):
     """Base calendar of task do-dates (``due``)."""
 
     _attr_icon = "mdi:calendar-check"
+    _uid_prefix = "tasks"
 
     def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
         super().__init__(coordinator)
@@ -85,29 +89,53 @@ class TasksCalendarBase(CoordinatorEntity, CalendarEntity):
         """Active tasks visible on this calendar. Override in subclasses."""
         return [i for i in items if not i.is_done]
 
+    def _date_value(self, item):
+        """The date/datetime this calendar keys on. Override for deadlines."""
+        return item.due_value()
+
+    def _all_day(self, item) -> bool:
+        """Whether this calendar's event is all-day. Override for deadlines."""
+        return item.due_all_day
+
     def _items(self):
-        """Items with a ``due`` that belong on this calendar."""
-        return [i for i in self._filter(self.coordinator.data or []) if i.due is not None]
+        """Items that carry this calendar's date and belong on it."""
+        return [
+            i
+            for i in self._filter(self.coordinator.data or [])
+            if self._date_value(i) is not None
+        ]
 
     def _event_for(self, item) -> CalendarEvent | None:
-        if item.due is None:
+        value = self._date_value(item)
+        if value is None:
             return None
 
+        # Shared cross-integration event contract (mirrored in the
+        # todoist_extended integration): priority is carried both as a
+        # "P{n} · " summary prefix and as a "Priority: P{n}" description line,
+        # so calendar blueprints behave identically regardless of source.
         summary = item.summary
         label = _priority_label(item.priority)
         if label:
             summary = f"{label} · {summary}"
 
-        description = item.description or ""
+        parts = []
+        if label:
+            parts.append(f"Priority: {label}")
         if item.project:
-            description = f"Project: {item.project}\n{description}".strip()
+            parts.append(f"Project: {item.project}")
+        if item.tags:
+            parts.append("Labels: " + ", ".join(item.tags))
+        if item.description:
+            parts.append(item.description)
+        description = "\n".join(parts)
 
-        if item.due_all_day:
-            day = item.due.date() if isinstance(item.due, datetime) else item.due
+        if self._all_day(item):
+            day = value.date() if isinstance(value, datetime) else value
             start: date | datetime = day
             end: date | datetime = day + timedelta(days=1)
         else:
-            start = _to_dt(item.due)
+            start = _to_dt(value)
             end = start + (_duration_delta(item) or timedelta(hours=1))
 
         return CalendarEvent(
@@ -115,7 +143,7 @@ class TasksCalendarBase(CoordinatorEntity, CalendarEntity):
             start=start,
             end=end,
             description=description,
-            uid=f"tasks_{item.id}",
+            uid=f"{self._uid_prefix}_{item.id}",
         )
 
     def _sorted_events(self):
@@ -197,3 +225,28 @@ class TasksProjectCalendar(TasksCalendarBase):
 
     def _filter(self, items):
         return [i for i in items if not i.is_done and i.project == self._project]
+
+
+class TasksDeadlineCalendar(TasksCalendarBase):
+    """Active tasks keyed on their deadline (date-only, all-day events).
+
+    Mirrors todoist_extended's deadlines calendar so deadline-based blueprints
+    work for the personal tasks app too.
+    """
+
+    _attr_icon = "mdi:calendar-alert"
+    _uid_prefix = "tasksdeadline"
+
+    def __init__(self, coordinator, config_entry: ConfigEntry) -> None:
+        super().__init__(coordinator, config_entry)
+        self._attr_unique_id = f"{config_entry.entry_id}_calendar_deadlines"
+        self._attr_name = "Tasks Deadlines"
+
+    def _filter(self, items):
+        return [i for i in items if not i.is_done]
+
+    def _date_value(self, item):
+        return item.deadline_date()
+
+    def _all_day(self, item) -> bool:
+        return True
