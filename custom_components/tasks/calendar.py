@@ -13,7 +13,8 @@ from datetime import date, datetime, timedelta
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -36,17 +37,72 @@ async def async_setup_entry(
     """
     coordinator = hass.data[DOMAIN][config_entry.entry_id]["coordinator"]
 
-    entities: list[TasksCalendarBase] = [
-        TasksUnifiedCalendar(coordinator, config_entry),
-        TasksDeadlineCalendar(coordinator, config_entry),
-    ]
+    async_add_entities(
+        [
+            TasksUnifiedCalendar(coordinator, config_entry),
+            TasksDeadlineCalendar(coordinator, config_entry),
+        ]
+    )
 
     if config_entry.data.get(CONF_CREATE_PROJECT_LISTS, False):
-        projects = sorted({item.project for item in (coordinator.data or []) if item.project})
-        for project in projects:
-            entities.append(TasksProjectCalendar(coordinator, config_entry, project))
+        _setup_project_calendars(hass, coordinator, config_entry, async_add_entities)
 
-    async_add_entities(entities)
+
+def _project_slug(project: str) -> str:
+    return project.lower().replace(" ", "_")
+
+
+@callback
+def _setup_project_calendars(
+    hass: HomeAssistant,
+    coordinator,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Add a calendar per project and prune ones whose project is gone.
+
+    Projects come and go as tasks are created/deleted. Rather than tracking an
+    in-memory delta (which resets to empty on every reload and so never notices
+    a project that vanished while HA was down), reconcile against the entity
+    registry each sync — the durable record of what exists — so stale
+    per-project calendars get cleaned up instead of lingering as `unavailable`.
+    """
+    added: set[str] = set()
+    prefix = f"{config_entry.entry_id}_calendar_project_"
+
+    @callback
+    def _sync() -> None:
+        if coordinator.data is None:
+            return
+        projects = sorted({i.project for i in coordinator.data if i.project})
+        wanted = {f"{prefix}{_project_slug(p)}": p for p in projects}
+        registry = er.async_get(hass)
+
+        new = {uid: p for uid, p in wanted.items() if uid not in added}
+        if new:
+            async_add_entities(
+                TasksProjectCalendar(coordinator, config_entry, project)
+                for project in new.values()
+            )
+            added.update(new)
+
+        for reg_entry in er.async_entries_for_config_entry(
+            registry, config_entry.entry_id
+        ):
+            if (
+                reg_entry.domain != "calendar"
+                or not reg_entry.unique_id.startswith(prefix)
+            ):
+                continue
+            if reg_entry.unique_id not in wanted:
+                _LOGGER.debug(
+                    "Removing calendar for gone project %s", reg_entry.unique_id
+                )
+                registry.async_remove(reg_entry.entity_id)
+                added.discard(reg_entry.unique_id)
+
+    _sync()
+    config_entry.async_on_unload(coordinator.async_add_listener(_sync))
 
 
 def _priority_label(priority: int | None) -> str | None:
