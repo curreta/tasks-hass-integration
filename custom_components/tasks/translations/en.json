@@ -12,6 +12,7 @@
         "title": "Options",
         "data": {
           "create_project_lists": "Create a to-do list per project",
+          "create_priority_lists": "Create a calendar per priority (P1–P4)",
           "show_due_in": "Days ahead to consider \"due soon\"",
           "refresh_interval": "Refresh interval"
         }
@@ -28,6 +29,7 @@
         "title": "Tasks options",
         "data": {
           "create_project_lists": "Create a to-do list per project",
+          "create_priority_lists": "Create a calendar per priority (P1–P4)",
           "show_due_in": "Days ahead to consider \"due soon\"",
           "refresh_interval": "Refresh interval"
         }

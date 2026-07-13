@@ -5,6 +5,7 @@ DOMAIN = "tasks"
 CONF_URL = "url"
 CONF_REFRESH_INTERVAL = "refresh_interval"
 CONF_CREATE_PROJECT_LISTS = "create_project_lists"
+CONF_CREATE_PRIORITY_LISTS = "create_priority_lists"
 CONF_SHOW_DUE_IN = "show_due_in"
 # Legacy: calendars now always key on `due`. Kept so old config entries that
 # still carry this key load without error; the value is ignored.

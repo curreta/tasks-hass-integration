@@ -19,7 +19,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_CREATE_PROJECT_LISTS, DOMAIN
+from .const import CONF_CREATE_PRIORITY_LISTS, CONF_CREATE_PROJECT_LISTS, DOMAIN
+
+# The fixed priority levels a task can carry, as Todoist-style labels. Fixed
+# (unlike projects, which come and go), so each maps to a stable calendar an
+# automation can bind to.
+PRIORITY_LABELS = ("P1", "P2", "P3", "P4")
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,6 +51,12 @@ async def async_setup_entry(
 
     if config_entry.data.get(CONF_CREATE_PROJECT_LISTS, False):
         _setup_project_calendars(hass, coordinator, config_entry, async_add_entities)
+
+    if config_entry.data.get(CONF_CREATE_PRIORITY_LISTS, False):
+        async_add_entities(
+            TasksPriorityCalendar(coordinator, config_entry, label)
+            for label in PRIORITY_LABELS
+        )
 
 
 def _project_slug(project: str) -> str:
@@ -281,6 +292,32 @@ class TasksProjectCalendar(TasksCalendarBase):
 
     def _filter(self, items):
         return [i for i in items if not i.is_done and i.project == self._project]
+
+
+class TasksPriorityCalendar(TasksCalendarBase):
+    """Active tasks with a do-date at a single priority level (P1..P4).
+
+    A fixed set of calendars, one per priority — unlike per-project calendars,
+    which come and go. Each is a stable entity an automation can bind to
+    (``calendar.tasks_p1`` -> a relentless ack group, the rest -> a calm one).
+    The calendar exists even when no task currently carries that priority, so
+    the automation target never disappears.
+    """
+
+    _attr_icon = "mdi:flag"
+
+    def __init__(self, coordinator, config_entry: ConfigEntry, label: str) -> None:
+        super().__init__(coordinator, config_entry)
+        self._label = label
+        self._attr_unique_id = f"{config_entry.entry_id}_calendar_priority_{label.lower()}"
+        self._attr_name = f"Tasks {label}"
+
+    def _filter(self, items):
+        return [
+            i
+            for i in items
+            if not i.is_done and _priority_label(i.priority) == self._label
+        ]
 
 
 class TasksDeadlineCalendar(TasksCalendarBase):

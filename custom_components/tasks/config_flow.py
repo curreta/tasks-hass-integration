@@ -15,6 +15,7 @@ from homeassistant.helpers.selector import (
 
 from .api import TasksApiClient
 from .const import (
+    CONF_CREATE_PRIORITY_LISTS,
     CONF_CREATE_PROJECT_LISTS,
     CONF_REFRESH_INTERVAL,
     CONF_SHOW_DUE_IN,
@@ -50,6 +51,10 @@ def _options_schema(defaults: dict[str, Any]) -> vol.Schema:
             vol.Optional(
                 CONF_CREATE_PROJECT_LISTS,
                 default=defaults.get(CONF_CREATE_PROJECT_LISTS, False),
+            ): bool,
+            vol.Optional(
+                CONF_CREATE_PRIORITY_LISTS,
+                default=defaults.get(CONF_CREATE_PRIORITY_LISTS, False),
             ): bool,
             vol.Optional(
                 CONF_SHOW_DUE_IN,
@@ -101,6 +106,7 @@ class TasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data = {
                 **self._server_data,
                 CONF_CREATE_PROJECT_LISTS: user_input.get(CONF_CREATE_PROJECT_LISTS, False),
+                CONF_CREATE_PRIORITY_LISTS: user_input.get(CONF_CREATE_PRIORITY_LISTS, False),
                 CONF_SHOW_DUE_IN: user_input.get(CONF_SHOW_DUE_IN, DEFAULT_SHOW_DUE_IN),
                 CONF_REFRESH_INTERVAL: _duration_to_seconds(
                     user_input.get(
@@ -129,6 +135,7 @@ class TasksOptionsFlowHandler(config_entries.OptionsFlow):
             data = {
                 CONF_URL: self.entry.data.get(CONF_URL),
                 CONF_CREATE_PROJECT_LISTS: user_input.get(CONF_CREATE_PROJECT_LISTS, False),
+                CONF_CREATE_PRIORITY_LISTS: user_input.get(CONF_CREATE_PRIORITY_LISTS, False),
                 CONF_SHOW_DUE_IN: user_input.get(CONF_SHOW_DUE_IN, DEFAULT_SHOW_DUE_IN),
                 CONF_REFRESH_INTERVAL: _duration_to_seconds(
                     user_input.get(
