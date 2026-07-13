@@ -134,8 +134,10 @@ class TasksProjectList(TasksTodoListBase):
     def __init__(self, coordinator, client, config_entry: ConfigEntry, project: str) -> None:
         super().__init__(coordinator, client, config_entry)
         self._project = project
-        slug = project.lower().replace(" ", "_")
-        self._attr_unique_id = f"{config_entry.entry_id}_project_{slug}"
+        # Key unique_id on the RAW project string (injective) — see the matching
+        # note in calendar.py's TasksProjectCalendar. A lossy slug let two
+        # projects differing only by case/spaces collide and silently drop one.
+        self._attr_unique_id = f"{config_entry.entry_id}_project_{project}"
         self._attr_name = f"Tasks: {project}"
 
     def _filter(self, items):

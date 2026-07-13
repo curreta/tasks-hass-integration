@@ -5,8 +5,9 @@ from datetime import timedelta
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -105,9 +106,53 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _register_services(hass)
 
+    # Must run BEFORE forwarding platforms so the platforms find the migrated
+    # unique_ids and reuse the existing entities instead of creating new ones
+    # alongside now-orphaned old-format entries.
+    _migrate_project_unique_ids(hass, entry, coordinator.data or [])
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
+
+
+def _legacy_project_slug(project: str) -> str:
+    """The old lossy slug per-project unique_ids used before the switch to the
+    raw project string. Kept solely to locate existing entities for migration."""
+    return project.lower().replace(" ", "_")
+
+
+@callback
+def _migrate_project_unique_ids(hass: HomeAssistant, entry: ConfigEntry, items) -> None:
+    """Migrate per-project calendar/todo entities to raw-project-string unique_ids.
+
+    The old scheme (`project.lower().replace(" ", "_")`) was not injective, so
+    two project names differing only by case or spaces collided into one
+    unique_id and HA silently dropped the second entity. The raw project string
+    is injective. This one-time, idempotent rewrite preserves each existing
+    entity (its entity_id, area, and customisations) across the change instead
+    of orphaning it and spawning a "_2" duplicate.
+    """
+    registry = er.async_get(hass)
+    projects = sorted({i.project for i in items if i.project})
+    # (platform domain, unique_id prefix) for each per-project entity type
+    platforms = (
+        ("calendar", f"{entry.entry_id}_calendar_project_"),
+        ("todo", f"{entry.entry_id}_project_"),
+    )
+    for domain, prefix in platforms:
+        for project in projects:
+            old_uid = f"{prefix}{_legacy_project_slug(project)}"
+            new_uid = f"{prefix}{project}"
+            if old_uid == new_uid:
+                continue  # slug == raw (e.g. already lowercase, no spaces)
+            old_entity = registry.async_get_entity_id(domain, DOMAIN, old_uid)
+            if old_entity is None:
+                continue  # nothing registered under the old id (already migrated / never existed)
+            if registry.async_get_entity_id(domain, DOMAIN, new_uid) is not None:
+                continue  # target id already taken — don't clobber
+            _LOGGER.debug("Migrating %s unique_id %s -> %s", domain, old_uid, new_uid)
+            registry.async_update_entity(old_entity, new_unique_id=new_uid)
 
 
 def _resolve(hass: HomeAssistant, call: ServiceCall):

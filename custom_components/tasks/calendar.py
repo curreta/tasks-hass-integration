@@ -59,10 +59,6 @@ async def async_setup_entry(
         )
 
 
-def _project_slug(project: str) -> str:
-    return project.lower().replace(" ", "_")
-
-
 @callback
 def _setup_project_calendars(
     hass: HomeAssistant,
@@ -86,7 +82,7 @@ def _setup_project_calendars(
         if coordinator.data is None:
             return
         projects = sorted({i.project for i in coordinator.data if i.project})
-        wanted = {f"{prefix}{_project_slug(p)}": p for p in projects}
+        wanted = {f"{prefix}{p}": p for p in projects}
         registry = er.async_get(hass)
 
         new = {uid: p for uid, p in wanted.items() if uid not in added}
@@ -286,8 +282,12 @@ class TasksProjectCalendar(TasksCalendarBase):
     def __init__(self, coordinator, config_entry: ConfigEntry, project: str) -> None:
         super().__init__(coordinator, config_entry)
         self._project = project
-        slug = project.lower().replace(" ", "_")
-        self._attr_unique_id = f"{config_entry.entry_id}_calendar_project_{slug}"
+        # Key unique_id on the RAW project string (injective) rather than a
+        # lossy slug: two projects differing only by case or spaces used to
+        # collapse to one unique_id, and HA silently dropped the second entity.
+        # entity_id is still HA-derived from the name (a name-slug collision at
+        # most yields a "_2" suffix — no data loss).
+        self._attr_unique_id = f"{config_entry.entry_id}_calendar_project_{project}"
         self._attr_name = f"Tasks: {project}"
 
     def _filter(self, items):
